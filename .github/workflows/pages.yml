@@ -1,0 +1,45 @@
+# Deploys the static site in this repository to GitHub Pages.
+# No build step: the repository root is published as-is.
+name: Deploy portfolio to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright Chromium
+        run: npm install --no-save playwright@1.47.2 && npx playwright install --with-deps chromium
+      - name: Run site smoke test
+        run: node tests/smoke.mjs
+
+  deploy:
+    needs: smoke-test
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
